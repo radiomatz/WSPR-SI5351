@@ -27,15 +27,16 @@ unsigned long freq;
  */
 // #define WSPR_DEFAULT_FREQ  7038600UL // 40m
 #define WSPR_DEFAULT_FREQ 14095600UL // 20m
+unsigned long mainQRG = WSPR_DEFAULT_FREQ;
 
 // Calibration: see "Etherkit SI5351" Library: si5351_calibration example
 // dm2hr: 146375L --> 148100L
-#define CALIBRATION 146300L // calib: lower_cal=higher_freq
+#define CALIBRATION 147900L // calib: lower_cal=higher_freq
 
 char call[15] = "DM2HR";
-char loc[9] = "JN58";
+char loc[5] = "JN58";
 uint8_t dbm = 15;
-unsigned int wsprQRG = 1650; // Standard QRG for Push Button start
+unsigned int wsprQRG = 1700; // Standard QRG for Push Button start
 
 // #####################################
 // #####################################
@@ -93,6 +94,7 @@ bool getconf(){
     EEPROM.get(42+sizeof(id)+sizeof(call),loc);
     EEPROM.get(42+sizeof(id)+sizeof(call)+sizeof(loc),dbm);
     EEPROM.get(42+sizeof(id)+sizeof(call)+sizeof(loc)+sizeof(dbm), wsprQRG);
+    EEPROM.get(42+sizeof(id)+sizeof(call)+sizeof(loc)+sizeof(dbm)+sizeof(wsprQRG), mainQRG);
     return(true);
   }
   return(false);
@@ -106,7 +108,8 @@ bool setconf(){
     EEPROM.put(42+sizeof(id), call);
     EEPROM.put(42+sizeof(id)+sizeof(call),loc);
     EEPROM.put(42+sizeof(id)+sizeof(call)+sizeof(loc),dbm);
-    EEPROM.get(42+sizeof(id)+sizeof(call)+sizeof(loc)+sizeof(dbm), wsprQRG);
+    EEPROM.put(42+sizeof(id)+sizeof(call)+sizeof(loc)+sizeof(dbm), wsprQRG);
+    EEPROM.put(42+sizeof(id)+sizeof(call)+sizeof(loc)+sizeof(dbm)+sizeof(wsprQRG), mainQRG);
     return(true);
   }
   return(false);
@@ -166,9 +169,9 @@ void loop() {
         // normally 1400-1600, but for testing purposes greater for not disturbing others
         if (qrgin > 0 && qrgin <= 2700) {
           wsprQRG = qrgin;
-          freq = WSPR_DEFAULT_FREQ + qrgin;
         }
       }
+      freq = WSPR_DEFAULT_FREQ + wsprQRG;
       now = millis() / 1000;
       if ( wsprQRG > 0 ) {
         Serial.println(" ... sending now(" + 
