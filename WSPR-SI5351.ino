@@ -3,7 +3,6 @@
 #include <rs_common.h>
 #include <int.h>
 #include <string.h>
-#include <EEPROM.h>
 #include "Wire.h"
 
 // Hardware defines
@@ -27,6 +26,7 @@ unsigned long freq;
  */
 // #define WSPR_DEFAULT_FREQ  7038600UL // 40m
 #define WSPR_DEFAULT_FREQ 14095600UL // 20m
+
 unsigned long mainQRG = WSPR_DEFAULT_FREQ;
 
 // Calibration: see "Etherkit SI5351" Library: si5351_calibration example
@@ -86,33 +86,13 @@ void encode() {
 }
 
 
-bool getconf(){
-    // get last config, if there is any
-  if ( EEPROM.get (42, id) == 42 ) {
-    Serial.println("*id=" + String(id));
-    EEPROM.get(42+sizeof(id), call);
-    EEPROM.get(42+sizeof(id)+sizeof(call),loc);
-    EEPROM.get(42+sizeof(id)+sizeof(call)+sizeof(loc),dbm);
-    EEPROM.get(42+sizeof(id)+sizeof(call)+sizeof(loc)+sizeof(dbm), wsprQRG);
-    EEPROM.get(42+sizeof(id)+sizeof(call)+sizeof(loc)+sizeof(dbm)+sizeof(wsprQRG), mainQRG);
-    return(true);
-  }
-  return(false);
-}
-
-
-bool setconf(){
-    // get last config, if there is any
-  if ( EEPROM.get (42, id) == 42 ) {
-    Serial.println("*id=" + String(id));
-    EEPROM.put(42+sizeof(id), call);
-    EEPROM.put(42+sizeof(id)+sizeof(call),loc);
-    EEPROM.put(42+sizeof(id)+sizeof(call)+sizeof(loc),dbm);
-    EEPROM.put(42+sizeof(id)+sizeof(call)+sizeof(loc)+sizeof(dbm), wsprQRG);
-    EEPROM.put(42+sizeof(id)+sizeof(call)+sizeof(loc)+sizeof(dbm)+sizeof(wsprQRG), mainQRG);
-    return(true);
-  }
-  return(false);
+void showconf(){
+    Serial.println("\nConfiguration:");
+    Serial.println("*call=" + String(call));
+    Serial.println("*loc=" + String(loc));
+    Serial.println("*dbm=" + String(dbm));
+    Serial.println("*wsprQRG=" + String(wsprQRG));
+    Serial.println("*mainQRG=" + String(mainQRG));
 }
 
 
@@ -138,6 +118,7 @@ void setup() {
   // Use a button connected to pin 12 as a transmit trigger
   pinMode(BUTTON, INPUT_PULLUP);
 
+  showconf(); // TODO: what to do when with our saved config
 
   // Set CLK0 output
   si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);  // Set for max(8MA) power if desired
@@ -164,8 +145,9 @@ void loop() {
           c = Serial.read();
           Serial.print(c);
         }
-        if ( sein != "" )
-          qrgin = sein.toInt();
+        if ( sein != "" ) {
+            qrgin = sein.toInt();
+        }
         // normally 1400-1600, but for testing purposes greater for not disturbing others
         if (qrgin > 0 && qrgin <= 2700) {
           wsprQRG = qrgin;
