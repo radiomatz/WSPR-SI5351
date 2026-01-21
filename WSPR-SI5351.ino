@@ -31,7 +31,7 @@ unsigned long mainQRG = WSPR_DEFAULT_FREQ;
 
 // Calibration: see "Etherkit SI5351" Library: si5351_calibration example
 // dm2hr: 146375L --> 148100L
-#define CALIBRATION 147900L // calib: lower_cal=higher_freq
+#define CALIBRATION 147900L // calib: lower_cal=higher_freq, 1 Hz =~ 100 cal
 
 char call[15] = "DM2HR";
 char loc[5] = "JN58";
