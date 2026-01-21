@@ -3,6 +3,7 @@
 #include <rs_common.h>
 #include <int.h>
 #include <string.h>
+#include <EEPROM.h>
 #include "Wire.h"
 
 // Hardware defines
@@ -31,9 +32,10 @@ unsigned long freq;
 // dm2hr: 146375L --> 148100L
 #define CALIBRATION 146300L // calib: lower_cal=higher_freq
 
-char call[] = "DM2HR";
-char loc[] = "JN58";
+char call[15] = "DM2HR";
+char loc[9] = "JN58";
 uint8_t dbm = 15;
+unsigned int wsprQRG = 1650; // Standard QRG for Push Button start
 
 // #####################################
 // #####################################
@@ -41,9 +43,9 @@ uint8_t dbm = 15;
 
 String sein;
 int qrgin = -1;
-unsigned int wsprQRG = 1650; // Standard QRG for Push Button start
 unsigned long now = 0;
 char c;
+uint8_t id = 0;
 uint8_t tx_buffer[255];
 uint8_t symbol_count;
 uint16_t tone_delay, tone_spacing;
@@ -83,6 +85,34 @@ void encode() {
 }
 
 
+bool getconf(){
+    // get last config, if there is any
+  if ( EEPROM.get (42, id) == 42 ) {
+    Serial.println("*id=" + String(id));
+    EEPROM.get(42+sizeof(id), call);
+    EEPROM.get(42+sizeof(id)+sizeof(call),loc);
+    EEPROM.get(42+sizeof(id)+sizeof(call)+sizeof(loc),dbm);
+    EEPROM.get(42+sizeof(id)+sizeof(call)+sizeof(loc)+sizeof(dbm), wsprQRG);
+    return(true);
+  }
+  return(false);
+}
+
+
+bool setconf(){
+    // get last config, if there is any
+  if ( EEPROM.get (42, id) == 42 ) {
+    Serial.println("*id=" + String(id));
+    EEPROM.put(42+sizeof(id), call);
+    EEPROM.put(42+sizeof(id)+sizeof(call),loc);
+    EEPROM.put(42+sizeof(id)+sizeof(call)+sizeof(loc),dbm);
+    EEPROM.get(42+sizeof(id)+sizeof(call)+sizeof(loc)+sizeof(dbm), wsprQRG);
+    return(true);
+  }
+  return(false);
+}
+
+
 void setup() {
   Serial.begin(115200);
   Serial.setTimeout(3600000UL);
@@ -104,6 +134,7 @@ void setup() {
 
   // Use a button connected to pin 12 as a transmit trigger
   pinMode(BUTTON, INPUT_PULLUP);
+
 
   // Set CLK0 output
   si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);  // Set for max(8MA) power if desired
@@ -130,18 +161,16 @@ void loop() {
           c = Serial.read();
           Serial.print(c);
         }
-        qrgin = sein.toInt();
+        if ( sein != "" )
+          qrgin = sein.toInt();
         // normally 1400-1600, but for testing purposes greater for not disturbing others
         if (qrgin > 0 && qrgin <= 2700) {
           wsprQRG = qrgin;
           freq = WSPR_DEFAULT_FREQ + qrgin;
-        } else {
-          Serial.println("QRG out of limit: " + String(qrgin));
-          qrgin = -1;
         }
       }
       now = millis() / 1000;
-      if ( qrgin > 0 ) {
+      if ( wsprQRG > 0 ) {
         Serial.println(" ... sending now(" + 
             String(now) + ") on " + 
             String(WSPR_DEFAULT_FREQ) + " + " + 
@@ -149,6 +178,7 @@ void loop() {
             String(freq) );
         encode();
       }
+      sein = "";
       Serial.print("READY>");
       delay(50);  //delay to avoid extra triggers
     }
