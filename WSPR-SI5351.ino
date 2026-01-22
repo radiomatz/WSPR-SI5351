@@ -16,30 +16,26 @@ JTEncode jtencode;
 // Global variables
 unsigned long freq;
 
-// #####################################
-// #####################################
-// #####################################
 #define WSPR_TONE_SPACING 146  // ~1.46 Hz
 #define WSPR_DELAY 683         // Delay value for WSPR
-/*
- *** below are all user configuratable items *** 
- */
-// #define WSPR_DEFAULT_FREQ  7038600UL // 40m
-#define WSPR_DEFAULT_FREQ 14095600UL // 20m
+#define WSPR_DEFAULT_FREQ_40m  7038600UL // 40m
+#define WSPR_DEFAULT_FREQ_20m 14095600UL // 20m
 
-unsigned long mainQRG = WSPR_DEFAULT_FREQ;
+// #####################################
+// below are all user configuratable items
+// #####################################
 
 // Calibration: see "Etherkit SI5351" Library: si5351_calibration example
-// dm2hr: 146375L --> 148100L
-#define CALIBRATION 147900L // calib: lower_cal=higher_freq, 1 Hz =~ 100 cal
+#define CALIBRATION 147400L // calib: lower_cal=higher_freq, 1 Hz =~ 100 cal
 
-char call[15] = "DM2HR";
-char loc[5] = "JN58";
+unsigned long mainQRG = WSPR_DEFAULT_FREQ_20m;
+char call[13] = "DM2HR"; // size: max 12 + NULL
+char loc[7] = "JN58";    // size: max 6 + NULL
 uint8_t dbm = 15;
 unsigned int wsprQRG = 1700; // Standard QRG for Push Button start
 
 // #####################################
-// #####################################
+//     end USER config
 // #####################################
 
 String sein;
@@ -153,12 +149,12 @@ void loop() {
           wsprQRG = qrgin;
         }
       }
-      freq = WSPR_DEFAULT_FREQ + wsprQRG;
+      freq = mainQRG + wsprQRG;
       now = millis() / 1000;
       if ( wsprQRG > 0 ) {
-        Serial.println(" ... sending now(" + 
+        Serial.println("\r ... sending now(" + 
             String(now) + ") on " + 
-            String(WSPR_DEFAULT_FREQ) + " + " + 
+            String(mainQRG) + " + " + 
             String(wsprQRG) + " = " + 
             String(freq) );
         encode();
