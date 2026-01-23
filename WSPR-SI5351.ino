@@ -26,12 +26,15 @@ unsigned long freq;
 // #####################################
 
 // Calibration: see "Etherkit SI5351" Library: si5351_calibration example
-#define CALIBRATION 147400L // calib: lower_cal=higher_freq, 1 Hz =~ 100 cal
+// calib: lower_cal=higher_freq, 1.46 Hz =~ 100 cal
+
+// #define CALIBRATION 147400L // warm (25°C)
+#define CALIBRATION 148600L // cold (19°C)
 
 unsigned long mainQRG = WSPR_DEFAULT_FREQ_20m;
 char call[13] = "DM2HR"; // size: max 12 + NULL
 char loc[7] = "JN58";    // size: max 6 + NULL
-uint8_t dbm = 15;
+uint8_t dbm = 13;
 unsigned int wsprQRG = 1700; // Standard QRG for Push Button start
 
 // #####################################
@@ -83,12 +86,12 @@ void encode() {
 
 
 void showconf(){
-    Serial.println("\nConfiguration:");
-    Serial.println("*call=" + String(call));
-    Serial.println("*loc=" + String(loc));
-    Serial.println("*dbm=" + String(dbm));
-    Serial.println("*wsprQRG=" + String(wsprQRG));
-    Serial.println("*mainQRG=" + String(mainQRG));
+    Serial.print("\nConfig:");
+    Serial.print("call=" + String(call));
+    Serial.print(", loc=" + String(loc));
+    Serial.print(", dbm=" + String(dbm));
+    Serial.print(", wsprQRG=" + String(wsprQRG));
+    Serial.println(", mainQRG=" + String(mainQRG));
 }
 
 
@@ -164,5 +167,4 @@ void loop() {
       delay(50);  //delay to avoid extra triggers
     }
   }
-  delay(50);  //delay to avoid extra triggers
 }
