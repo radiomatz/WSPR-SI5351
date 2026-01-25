@@ -23,6 +23,8 @@ unsigned long freq;
 #define WSPR_DEFAULT_FREQ_20m 14095600UL // 20m
 #define WSPR_DEFAULT_FREQ_17m 18104600UL // 17m
 #define WSPR_DEFAULT_FREQ_15m 21094600UL // 15m
+#define WSPR_DEFAULT_FREQ_12m 24924600UL // 12m
+#define WSPR_DEFAULT_FREQ_10m 28124600UL // 10m
 
 // #####################################
 // below are all user configuratable items
@@ -34,7 +36,7 @@ unsigned long freq;
 
 #define CALIBRATION 147300L // at the moment, if room is warm or even not :-)
 
-unsigned long mainQRG = WSPR_DEFAULT_FREQ_20m;
+unsigned long mainQRG = WSPR_DEFAULT_FREQ_40m;
 char call[13] = "DM2HR"; // size: max 12 + NULL
 char loc[7] = "JN58";    // size: max 6 + NULL
 uint8_t dbm = 13;
