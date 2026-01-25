@@ -10,3 +10,5 @@ i am using two calculators for the collins-filter and they seem to be very usabl
 - (for first orientation) http://www.elektronik-bastler.info/stn/lc_filter.html 
 - (for fine tuning of parts) https://www.leobaumann.de/usacollins_filter.htm
 
+i got a hint for a simulation programm from DK3BA: QUCS, needs Qt5, on github
+
