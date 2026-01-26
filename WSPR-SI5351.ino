@@ -4,6 +4,7 @@
 #include <int.h>
 #include <string.h>
 #include "Wire.h"
+#include <EEPROM.h>
 
 // Hardware defines
 #define BUTTON 3
@@ -13,18 +14,25 @@
 Si5351 si5351;
 JTEncode jtencode;
 
+#define PROGID 42                         // die Antwort auf alles
+#define WSPR_TONE_SPACING 146             // ~1.46 Hz
+#define WSPR_DELAY 683                    // Delay value for WSPR
+#define WSPR_DEFAULT_FREQ_2190m   13600UL   // 2190m
+#define WSPR_DEFAULT_FREQ_630m   474200UL   // 630m
+#define WSPR_DEFAULT_FREQ_160m  1836600UL   // 160m
+#define WSPR_DEFAULT_FREQ_80m   3568600UL   // 80m
+#define WSPR_DEFAULT_FREQ_60m   5365600UL   // 60m
+#define WSPR_DEFAULT_FREQ_40m   7038600UL   // 40m
+#define WSPR_DEFAULT_FREQ_30m  10138700UL  // 30m
+#define WSPR_DEFAULT_FREQ_20m  14095600UL  // 20m
+#define WSPR_DEFAULT_FREQ_17m  18104600UL  // 17m
+#define WSPR_DEFAULT_FREQ_15m  21094600UL  // 15m
+#define WSPR_DEFAULT_FREQ_12m  24924600UL  // 12m
+#define WSPR_DEFAULT_FREQ_10m  28124600UL  // 10m
+#define WSPR_DEFAULT_FREQ_6m   50293000UL  // 6m
+
 // Global variables
 unsigned long freq;
-
-#define WSPR_TONE_SPACING 146  // ~1.46 Hz
-#define WSPR_DELAY 683         // Delay value for WSPR
-#define WSPR_DEFAULT_FREQ_40m  7038600UL // 40m
-#define WSPR_DEFAULT_FREQ_30m 10138700UL // 30m
-#define WSPR_DEFAULT_FREQ_20m 14095600UL // 20m
-#define WSPR_DEFAULT_FREQ_17m 18104600UL // 17m
-#define WSPR_DEFAULT_FREQ_15m 21094600UL // 15m
-#define WSPR_DEFAULT_FREQ_12m 24924600UL // 12m
-#define WSPR_DEFAULT_FREQ_10m 28124600UL // 10m
 
 // #####################################
 // below are all user configuratable items
@@ -34,19 +42,19 @@ unsigned long freq;
 // calib: lower_cal=higher_freq, 1.46 Hz =~ 100 cal
 // SI5351 is very unstable in his frequency when temperature changes on its surface!
 
-#define CALIBRATION 147300L // at the moment, if room is warm or even not :-)
+#define CALIBRATION 146900L  // at the moment, if room is warm or even not :-)
 
-unsigned long mainQRG = WSPR_DEFAULT_FREQ_40m;
-char call[13] = "DM2HR"; // size: max 12 + NULL
-char loc[7] = "JN58";    // size: max 6 + NULL
+unsigned long mainQRG = WSPR_DEFAULT_FREQ_20m;
+char call[13] = "DM2HR";  // size: max 12 + NULL
+char loc[7] = "JN58";     // size: max 6 + NULL
 uint8_t dbm = 13;
-unsigned int wsprQRG = 1700; // Standard QRG for Push Button start
+unsigned int wsprQRG = 1700;  // Standard QRG for Push Button start
 
 // #####################################
 //     end USER config
 // #####################################
 
-String sein;
+String sein = "";
 int qrgin = -1;
 unsigned long now = 0;
 char c;
@@ -55,6 +63,45 @@ uint8_t tx_buffer[255];
 uint8_t symbol_count;
 uint16_t tone_delay, tone_spacing;
 
+
+void getconf() {
+  uint8_t id;
+  unsigned long f;
+  unsigned int off;
+
+  if ( digitalRead(BUTTON) == LOW ) {
+    // if button pressed at startup, reset settings 
+    Serial.println(F("resetting EEPROM ..."));
+    Serial.flush();
+    for (int i = 0 ; i < EEPROM.length() ; i++) {
+      EEPROM.write(i, 0);
+    }
+    Serial.println(F("now press RESET!"));
+    Serial.flush();
+    while(1);
+  }
+  EEPROM.get(PROGID, id);
+  if (id == PROGID) {
+    EEPROM.get(PROGID + sizeof(uint8_t), f);
+    if (f > 1799000UL && f < 29501000UL) {
+      mainQRG = f;
+    }
+    EEPROM.get(PROGID + sizeof(uint8_t) + sizeof(unsigned long), off);
+    if (off > 1399 && off < 1601) {
+      wsprQRG = off;
+    }
+  }
+}
+
+void saveconf() {
+  EEPROM.put(PROGID, PROGID);
+  EEPROM.put(PROGID + sizeof(uint8_t), mainQRG);
+  EEPROM.put(PROGID + sizeof(uint8_t) + sizeof(unsigned long), wsprQRG);
+}
+
+void printhelp() {
+  Serial.println(F("Enter QRG (1400-1600) to send, or <xx>m for Band (sends@1700), ie 6m..15m..2160m"));
+}
 
 // Loop through the string, transmitting one character at a time.
 void encode() {
@@ -90,34 +137,25 @@ void encode() {
 }
 
 
-void showconf(){
-    Serial.print("\nConfig:");
-    Serial.print("call=" + String(call));
-    Serial.print(", loc=" + String(loc));
-    Serial.print(", dbm=" + String(dbm));
-    Serial.print(", wsprQRG=" + String(wsprQRG));
-    Serial.println(", mainQRG=" + String(mainQRG));
+void showconf() {
+  Serial.print(F("Config:"));
+  Serial.print(F("call="));
+  Serial.print( call );
+  Serial.print(F(", loc=")); 
+  Serial.print( loc );
+  Serial.print(F(", dbm="));
+  Serial.print( dbm );
+  Serial.print(F(", wsprQRG=")); 
+  Serial.print( wsprQRG );
+  Serial.print(F(", mainQRG=")); 
+  Serial.println( mainQRG );
 }
 
 
 void setup() {
   Serial.begin(115200);
   Serial.setTimeout(3600000UL);
-  // Initialize the Si5351
-  // Change the 2nd parameter in init if using a ref osc other
-  // than 25 MHz
-  while ( !si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0) ) {
-      Serial.println("Error init SI5351, check Cables!");
-      delay(2500);
-  }
-  
-  si5351.set_correction(CALIBRATION, SI5351_PLL_INPUT_XO);
-  si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
-  si5351.pll_reset(SI5351_PLLB);
-  si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLB);
-  si5351.pll_reset(SI5351_PLLB);
-  // si5351.set_correction(CALIBRATION, SI5351_PLL_INPUT_XO);
-
+ 
   // Use the Arduino's on-board LED as a keying indicator.
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
@@ -125,60 +163,123 @@ void setup() {
   // Use a button connected to pin 12 as a transmit trigger
   pinMode(BUTTON, INPUT_PULLUP);
 
-  showconf(); // TODO: what to do when with our saved config
+  getconf();
+
+ // Initialize the Si5351
+  // Change the 2nd parameter in init if using a ref osc other
+  // than 25 MHz
+  while (!si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0)) {
+    Serial.println(F("\nError init SI5351, check Cables!"));
+    delay(2500);
+  }
+
+  si5351.set_correction(CALIBRATION, SI5351_PLL_INPUT_XO);
+  si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
+  si5351.pll_reset(SI5351_PLLB);
+  si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLB);
+  si5351.pll_reset(SI5351_PLLB);
+  // si5351.set_correction(CALIBRATION, SI5351_PLL_INPUT_XO);
+  Serial.println(F("\nSI5351 started successfully."));
+
+  showconf();  // TODO: what to do when with our saved config
+
+  printhelp();
 
   // Set CLK0 output
   si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);  // Set for max(8MA) power if desired
   si5351.output_enable(SI5351_CLK0, 0);                  // Disable the clock initially
-  Serial.print("READY>");
+  Serial.print(F("READY>"));
 }
 
 
 void loop() {
-  // Debounce the button and trigger TX on push
   if (digitalRead(BUTTON) == LOW || Serial.available()) {
-    delay(50);  // delay to debounce
-    if (digitalRead(BUTTON) == LOW || Serial.available()) {
-      if (Serial.available()) {
-        sein = "";
-        do {
-          if ( Serial.available() ) {
-            c = Serial.read();
-            Serial.print(c);
-            if ( c == 8 && sein.length() > 0 ) // ^H, Backspace
-              sein.remove(sein.length() - 1);
-            else
-              sein += c;
-          }
-        } while ( c != 0x0d && c != 0x0a);
-        while (Serial.available()) {  // NL, CR and any accidentally typed things
-          c = Serial.read();
-        }
-        if ( sein != "" ) {
-            qrgin = sein.toInt();
-        }
-        // normally 1400-1600, but for testing purposes greater for not disturbing others
-        if (qrgin > 0 && qrgin <= 2700) {
-          wsprQRG = qrgin;
-        }
-      }
-
-      freq = mainQRG + wsprQRG;
-      now = millis() / 1000;
-
-      if ( wsprQRG > 0 ) {
-        
-        Serial.println();
-        Serial.print( " ... sending now(" + String(now) );
-        Serial.print( ") on " + String(mainQRG) );
-        Serial.print( " + " + String(wsprQRG) );
-        Serial.println( " = " + String(freq) );
-
-        encode();
-      }
+    if (Serial.available()) {
       sein = "";
-      Serial.print("READY>");
-      delay(50);  //delay to avoid extra triggers
+      do {
+        if (Serial.available()) {
+          c = Serial.read();
+          Serial.print(c);
+          if (c == 8 && sein.length() > 0)  // ^H, Backspace
+            sein.remove(sein.length() - 1);
+          else 
+            sein += c;
+        }
+      } while (c != 0x0d && c != 0x0a);
+      sein.remove(sein.length() - 1);
+      while (Serial.available()) {  // NL, CR and any accidentally typed things
+        c = Serial.read();
+      }
+      if ( sein.length() > 0 ) {
+        if ( sein.equals("6m") ) {
+          mainQRG = WSPR_DEFAULT_FREQ_6m;
+          qrgin = 1700;
+        } else if ( sein.equals("10m") ) {
+          mainQRG = WSPR_DEFAULT_FREQ_10m;
+          qrgin = 1700;
+        } else if ( sein.equals("12m") ) {
+          mainQRG = WSPR_DEFAULT_FREQ_12m;
+          qrgin = 1700;
+        } else if ( sein.equals("15m") ) {
+          mainQRG = WSPR_DEFAULT_FREQ_15m;
+          qrgin = 1700;
+        } else if ( sein.equals("17m") ) {
+          mainQRG = WSPR_DEFAULT_FREQ_17m;
+          qrgin = 1700;
+        } else if ( sein.equals("20m") ) {
+          mainQRG = WSPR_DEFAULT_FREQ_20m;
+          qrgin = 1700;
+        } else if ( sein.equals("30m") ) {
+          mainQRG = WSPR_DEFAULT_FREQ_30m;
+          qrgin = 1700;
+        } else if ( sein.equals("40m") ) {
+          mainQRG = WSPR_DEFAULT_FREQ_40m;
+          qrgin = 1700;
+        } else if ( sein.equals("60m") ) {
+          mainQRG = WSPR_DEFAULT_FREQ_60m;
+          qrgin = 1700;
+        } else if ( sein.equals("80m") ) {
+          mainQRG = WSPR_DEFAULT_FREQ_80m;
+          qrgin = 1700;
+        } else if ( sein.equals("160m") ) {
+          mainQRG = WSPR_DEFAULT_FREQ_160m;
+          qrgin = 1700;
+        } else if ( sein.equals("630m") ) {
+          mainQRG = WSPR_DEFAULT_FREQ_630m;
+          qrgin = 1700;
+        } else if ( sein.equals("2190m") ) {
+          mainQRG = WSPR_DEFAULT_FREQ_2190m;
+          qrgin = 1700;
+        } else  
+          qrgin = sein.toInt();
+      }
+      // normally 1400-1600, but for testing purposes greater for not disturbing others
+      if (qrgin > 0 && qrgin <= 2700) {
+        wsprQRG = qrgin;
+      }
     }
+
+    freq = mainQRG + wsprQRG;
+    now = millis() / 1000;
+
+    saveconf();
+
+    if (wsprQRG > 0) {
+      Serial.println();
+      Serial.print(F(" ... sending now("));
+      Serial.print( now );
+      Serial.print(F(") on "));
+      Serial.print( mainQRG );
+      Serial.print(F(" + "));
+      Serial.print( wsprQRG );
+      Serial.print(F(" = "));
+      Serial.println( freq );
+
+      encode();
+      saveconf();
+    }
+    sein = "";
+    Serial.print("READY>");
   }
+  delay(50);
 }
