@@ -195,7 +195,11 @@ void setup() {
 void loop() {
   if (digitalRead(BUTTON) == LOW || Serial.available()) {
     if (Serial.available()) {
+
+      /* is better, but has no echo 
       sein = "";
+      sein = Serial.readStringUntil('\r');
+      */
       do {
         if (Serial.available()) {
           c = Serial.read();
@@ -207,9 +211,11 @@ void loop() {
         }
       } while (c != 0x0d && c != 0x0a);
       sein.remove(sein.length() - 1);
+      
       while (Serial.available()) {  // NL, CR and any accidentally typed things
         c = Serial.read();
       }
+
       if ( sein.length() > 0 ) {
         if ( sein.equals("6m") ) {
           mainQRG = WSPR_DEFAULT_FREQ_6m;
@@ -262,8 +268,6 @@ void loop() {
     freq = mainQRG + wsprQRG;
     now = millis() / 1000;
 
-    saveconf();
-
     if (wsprQRG > 0) {
       Serial.println();
       Serial.print(F(" ... sending now("));
@@ -275,8 +279,8 @@ void loop() {
       Serial.print(F(" = "));
       Serial.println( freq );
 
-      encode();
       saveconf();
+      encode();
     }
     sein = "";
     Serial.print("READY>");
