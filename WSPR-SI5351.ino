@@ -8,6 +8,7 @@
 
 // Hardware defines
 #define BUTTON 3
+#define PWRPIN 4
 #define LED_PIN LED_BUILTIN
 
 // Class instantiation
@@ -42,7 +43,7 @@ unsigned long freq;
 // calib: lower_cal=higher_freq, 1.46 Hz =~ 100 cal
 // SI5351 is very unstable in his frequency when temperature changes on its surface!
 
-#define CALIBRATION 146900L  // at the moment, if room is warm or even not :-)
+long calibration=147300L;  // at the moment, if room is warm or even not :-)
 
 unsigned long mainQRG = WSPR_DEFAULT_FREQ_20m;
 char call[13] = "DM2HR";  // size: max 12 + NULL
@@ -62,6 +63,19 @@ uint8_t id = 0;
 uint8_t tx_buffer[255];
 uint8_t symbol_count;
 uint16_t tone_delay, tone_spacing;
+
+
+void setcalib(int inc) {
+  calibration += inc;
+  EEPROM.put(PROGID + sizeof(uint8_t) + sizeof(unsigned long)+sizeof(unsigned int), calibration);
+  si5351.set_correction(calibration, SI5351_PLL_INPUT_XO);
+  si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
+  si5351.pll_reset(SI5351_PLLB);
+  si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLB);
+  si5351.pll_reset(SI5351_PLLB);
+  Serial.print(F("Calibration now: "));
+  Serial.println(calibration);
+}
 
 
 void getconf() {
@@ -90,18 +104,31 @@ void getconf() {
     if (off > 1399 && off < 1601) {
       wsprQRG = off;
     }
+    EEPROM.get(PROGID + sizeof(uint8_t) + sizeof(unsigned long)+sizeof(unsigned int), calibration);
   }
 }
+
 
 void saveconf() {
   EEPROM.put(PROGID, PROGID);
   EEPROM.put(PROGID + sizeof(uint8_t), mainQRG);
   EEPROM.put(PROGID + sizeof(uint8_t) + sizeof(unsigned long), wsprQRG);
+  EEPROM.put(PROGID + sizeof(uint8_t) + sizeof(unsigned long)+sizeof(unsigned int), calibration);
 }
+
 
 void printhelp() {
   Serial.println(F("Enter QRG (1400-1600) to send, or <xx>m for Band (sends@1700), ie 6m..15m..2160m"));
 }
+
+
+void poweron ( bool onoff ) {
+  if ( onoff )
+    digitalWrite(PWRPIN, HIGH);
+  else
+    digitalWrite(PWRPIN, LOW);
+}
+
 
 // Loop through the string, transmitting one character at a time.
 void encode() {
@@ -143,7 +170,7 @@ void showconf() {
   Serial.print( call );
   Serial.print(F(", loc=")); 
   Serial.print( loc );
-  Serial.print(F(", dbm="));
+  Serial.print(F(", dBm="));
   Serial.print( dbm );
   Serial.print(F(", wsprQRG=")); 
   Serial.print( wsprQRG );
@@ -160,7 +187,10 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
 
-  // Use a button connected to pin 12 as a transmit trigger
+  pinMode(PWRPIN, OUTPUT);
+  digitalWrite(PWRPIN, LOW);
+
+  // Use a button connected to pin xx as a transmit trigger
   pinMode(BUTTON, INPUT_PULLUP);
 
   getconf();
@@ -173,15 +203,11 @@ void setup() {
     delay(2500);
   }
 
-  si5351.set_correction(CALIBRATION, SI5351_PLL_INPUT_XO);
-  si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
-  si5351.pll_reset(SI5351_PLLB);
-  si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLB);
-  si5351.pll_reset(SI5351_PLLB);
+  setcalib(0);
   // si5351.set_correction(CALIBRATION, SI5351_PLL_INPUT_XO);
   Serial.println(F("\nSI5351 started successfully."));
 
-  showconf();  // TODO: what to do when with our saved config
+  showconf();
 
   printhelp();
 
@@ -200,14 +226,27 @@ void loop() {
       sein = "";
       sein = Serial.readStringUntil('\r');
       */
+
       do {
         if (Serial.available()) {
           c = Serial.read();
           Serial.print(c);
-          if (c == 8 && sein.length() > 0)  // ^H, Backspace
-            sein.remove(sein.length() - 1);
-          else 
-            sein += c;
+          
+          switch(c) {
+            case 0x08:
+              if (c == 8 && sein.length() > 0)  // ^H, Backspace
+                sein.remove(sein.length() - 1);    
+              break;
+            case '+':
+              setcalib(100);
+              break;
+            case '-':
+              setcalib(-100);
+              break;
+            default:
+              sein += c;
+              break;
+          }
         }
       } while (c != 0x0d && c != 0x0a);
       sein.remove(sein.length() - 1);
@@ -279,11 +318,16 @@ void loop() {
       Serial.print(F(" = "));
       Serial.println( freq );
 
+      poweron(true);
       saveconf();
       encode();
+      poweron(false);
+
     }
     sein = "";
-    Serial.print("READY>");
+    Serial.print(F("READY@") );
+    Serial.print(wsprQRG);
+    Serial.print(F(">"));
   }
   delay(50);
 }
