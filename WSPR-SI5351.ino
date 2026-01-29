@@ -281,7 +281,6 @@ void loop() {
       if ( sein.length() > 0 ) {
         if ( sein.indexOf("dbm") > 0 ) {
             int temp = sein.toInt();
-            Serial.println(temp);
             if ( temp > 0 && temp < 43 )
               dbm = temp;
             showconf();
