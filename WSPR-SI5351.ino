@@ -6,6 +6,10 @@
 #include "Wire.h"
 #include <EEPROM.h>
 
+/*
+ * modified Code from Etherkit JTEncode Example by DM2HR, dm2hr@darc.de
+*/
+
 // Hardware defines
 #define BUTTON 3
 #define PWRPIN 4
@@ -58,8 +62,9 @@ unsigned int wsprQRG = 1700;  // Standard QRG for Push Button start
 String sein = "";
 int qrgin = -1;
 unsigned long now = 0;
-char c;
+char c = 0;
 uint8_t id = 0;
+
 uint8_t tx_buffer[255];
 uint8_t symbol_count;
 uint16_t tone_delay, tone_spacing;
@@ -75,6 +80,9 @@ void setcalib(int inc) {
   si5351.pll_reset(SI5351_PLLB);
   Serial.print(F("Calibration now: "));
   Serial.println(calibration);
+  // Set CLK0 output
+  si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);  // Set for max(8MA) power if desired
+  si5351.output_enable(SI5351_CLK0, 0);                  // Disable the clock initially
 }
 
 
@@ -104,7 +112,8 @@ void getconf() {
     if (off > 1399 && off < 1601) {
       wsprQRG = off;
     }
-    EEPROM.get(PROGID + sizeof(uint8_t) + sizeof(unsigned long)+sizeof(unsigned int), calibration);
+    EEPROM.get(PROGID + sizeof(uint8_t) + sizeof(unsigned long) + sizeof(unsigned int), calibration);
+    EEPROM.get(PROGID + sizeof(uint8_t) + sizeof(unsigned long) + sizeof(unsigned int) + sizeof(unsigned long), dbm);
   }
 }
 
@@ -113,15 +122,20 @@ void saveconf() {
   EEPROM.put(PROGID, PROGID);
   EEPROM.put(PROGID + sizeof(uint8_t), mainQRG);
   EEPROM.put(PROGID + sizeof(uint8_t) + sizeof(unsigned long), wsprQRG);
-  EEPROM.put(PROGID + sizeof(uint8_t) + sizeof(unsigned long)+sizeof(unsigned int), calibration);
+  EEPROM.put(PROGID + sizeof(uint8_t) + sizeof(unsigned long) + sizeof(unsigned int), calibration);
+  EEPROM.put(PROGID + sizeof(uint8_t) + sizeof(unsigned long) + sizeof(unsigned int) + sizeof(unsigned long), dbm);
 }
 
 
 void printhelp() {
-  Serial.println(F("Enter QRG (1400-1600) to send, or <xx>m for Band (sends@1700), ie 6m..15m..2160m"));
+  Serial.println(F("Help: Enter QRG (1400-1600) to send"));
+  Serial.println(F("      or <xx>m for Band (sends@1700), ie 6m..15m..2160m"));
+  Serial.println(F("      or <xx>dbm"));
+  Serial.println(F("      or +/- for changing Calibration +/- 1.46Hz"));
 }
 
 
+// for powering on a external PA, here: BS170, see Circuit description at github
 void poweron ( bool onoff ) {
   if ( onoff )
     digitalWrite(PWRPIN, HIGH);
@@ -146,7 +160,6 @@ void encode() {
   memset(tx_buffer, 0, 255);
   // Set the proper frequency and timer CTC depending on mode
   jtencode.wspr_encode(call, loc, dbm, tx_buffer);
-
 
   // Reset the tone to the base frequency and turn on the output
   si5351.output_enable(SI5351_CLK0, 1);
@@ -179,6 +192,14 @@ void showconf() {
 }
 
 
+void prompt() {
+    Serial.print(F("READY@") );
+    Serial.print(wsprQRG);
+    Serial.print(F(">"));
+}
+
+
+
 void setup() {
   Serial.begin(115200);
   Serial.setTimeout(3600000UL);
@@ -190,31 +211,26 @@ void setup() {
   pinMode(PWRPIN, OUTPUT);
   digitalWrite(PWRPIN, LOW);
 
-  // Use a button connected to pin xx as a transmit trigger
+  // Use a button connected to pin deined with "BUTTON" above as a transmit trigger
   pinMode(BUTTON, INPUT_PULLUP);
 
   getconf();
 
- // Initialize the Si5351
+  // Initialize the Si5351
   // Change the 2nd parameter in init if using a ref osc other
   // than 25 MHz
   while (!si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0)) {
     Serial.println(F("\nError init SI5351, check Cables!"));
     delay(2500);
   }
-
   setcalib(0);
-  // si5351.set_correction(CALIBRATION, SI5351_PLL_INPUT_XO);
   Serial.println(F("\nSI5351 started successfully."));
 
   showconf();
 
   printhelp();
 
-  // Set CLK0 output
-  si5351.drive_strength(SI5351_CLK0, SI5351_DRIVE_8MA);  // Set for max(8MA) power if desired
-  si5351.output_enable(SI5351_CLK0, 0);                  // Disable the clock initially
-  Serial.print(F("READY>"));
+  prompt();
 }
 
 
@@ -243,6 +259,13 @@ void loop() {
             case '-':
               setcalib(-100);
               break;
+            case 'h':
+            case '?':
+              printhelp();
+              goto out;
+            case 'c':
+              showconf();
+              goto out;
             default:
               sein += c;
               break;
@@ -256,47 +279,59 @@ void loop() {
       }
 
       if ( sein.length() > 0 ) {
-        if ( sein.equals("6m") ) {
-          mainQRG = WSPR_DEFAULT_FREQ_6m;
-          qrgin = 1700;
-        } else if ( sein.equals("10m") ) {
-          mainQRG = WSPR_DEFAULT_FREQ_10m;
-          qrgin = 1700;
-        } else if ( sein.equals("12m") ) {
-          mainQRG = WSPR_DEFAULT_FREQ_12m;
-          qrgin = 1700;
-        } else if ( sein.equals("15m") ) {
-          mainQRG = WSPR_DEFAULT_FREQ_15m;
-          qrgin = 1700;
-        } else if ( sein.equals("17m") ) {
-          mainQRG = WSPR_DEFAULT_FREQ_17m;
-          qrgin = 1700;
-        } else if ( sein.equals("20m") ) {
-          mainQRG = WSPR_DEFAULT_FREQ_20m;
-          qrgin = 1700;
-        } else if ( sein.equals("30m") ) {
-          mainQRG = WSPR_DEFAULT_FREQ_30m;
-          qrgin = 1700;
-        } else if ( sein.equals("40m") ) {
-          mainQRG = WSPR_DEFAULT_FREQ_40m;
-          qrgin = 1700;
-        } else if ( sein.equals("60m") ) {
-          mainQRG = WSPR_DEFAULT_FREQ_60m;
-          qrgin = 1700;
-        } else if ( sein.equals("80m") ) {
-          mainQRG = WSPR_DEFAULT_FREQ_80m;
-          qrgin = 1700;
-        } else if ( sein.equals("160m") ) {
-          mainQRG = WSPR_DEFAULT_FREQ_160m;
-          qrgin = 1700;
-        } else if ( sein.equals("630m") ) {
-          mainQRG = WSPR_DEFAULT_FREQ_630m;
-          qrgin = 1700;
-        } else if ( sein.equals("2190m") ) {
-          mainQRG = WSPR_DEFAULT_FREQ_2190m;
-          qrgin = 1700;
-        } else  
+        if ( sein.indexOf("dbm") > 0 ) {
+            int temp = sein.toInt();
+            Serial.println(temp);
+            if ( temp > 0 && temp < 43 )
+              dbm = temp;
+            showconf();
+            goto out;
+        } else if ( sein.indexOf("m") > 0 ) {
+          if ( sein.equals("6m") ) {
+            mainQRG = WSPR_DEFAULT_FREQ_6m;
+            qrgin = 1700;
+          } else if ( sein.equals("10m") ) {
+            mainQRG = WSPR_DEFAULT_FREQ_10m;
+            qrgin = 1700;
+          } else if ( sein.equals("12m") ) {
+            mainQRG = WSPR_DEFAULT_FREQ_12m;
+            qrgin = 1700;
+          } else if ( sein.equals("15m") ) {
+            mainQRG = WSPR_DEFAULT_FREQ_15m;
+            qrgin = 1700;
+          } else if ( sein.equals("17m") ) {
+            mainQRG = WSPR_DEFAULT_FREQ_17m;
+            qrgin = 1700;
+          } else if ( sein.equals("20m") ) {
+            mainQRG = WSPR_DEFAULT_FREQ_20m;
+            qrgin = 1700;
+          } else if ( sein.equals("30m") ) {
+            mainQRG = WSPR_DEFAULT_FREQ_30m;
+            qrgin = 1700;
+          } else if ( sein.equals("40m") ) {
+            mainQRG = WSPR_DEFAULT_FREQ_40m;
+            qrgin = 1700;
+          } else if ( sein.equals("60m") ) {
+            mainQRG = WSPR_DEFAULT_FREQ_60m;
+            qrgin = 1700;
+          } else if ( sein.equals("80m") ) {
+            mainQRG = WSPR_DEFAULT_FREQ_80m;
+            qrgin = 1700;
+          } else if ( sein.equals("160m") ) {
+            mainQRG = WSPR_DEFAULT_FREQ_160m;
+            qrgin = 1700;
+          } else if ( sein.equals("630m") ) {
+            mainQRG = WSPR_DEFAULT_FREQ_630m;
+            qrgin = 1700;
+          } else if ( sein.equals("2190m") ) {
+            mainQRG = WSPR_DEFAULT_FREQ_2190m;
+            qrgin = 1700;
+          }
+          showconf();
+          goto out;
+        } else { 
           qrgin = sein.toInt();
+        }
       }
       // normally 1400-1600, but for testing purposes greater for not disturbing others
       if (qrgin > 0 && qrgin <= 2700) {
@@ -322,12 +357,12 @@ void loop() {
       saveconf();
       encode();
       poweron(false);
-
     }
+
+    out:
+
     sein = "";
-    Serial.print(F("READY@") );
-    Serial.print(wsprQRG);
-    Serial.print(F(">"));
+    prompt();
   }
   delay(50);
 }
