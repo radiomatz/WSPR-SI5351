@@ -1,4 +1,4 @@
-# Arduino (Nano) Program for sending WSPR
+# Arduino (Nano) Program for sending WSPR with SI5351
 
 Place a PushButton between D3 and GND as PTT or <br>
 
@@ -16,7 +16,7 @@ All this settings will be saved in the EEPROM of your Arduino and can be resette
 
 D4 acts high-active as activator for the PA. (see circuit).
 
-Needs Etherkit JTEncode Library
+Needs Etherkit JTEncode Library, Etherkit SI5351 Library
 
 Before sending, have a look into the Example si5351_calibration!
 
