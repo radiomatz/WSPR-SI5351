@@ -1,10 +1,16 @@
 # Arduino (Nano) Program for sending WSPR
 
 Place a PushButton between D3 and GND as PTT or <br>
-enter just the Frequency-Offset (1400-1600) via Serial Line to start.<br>
-enter <BandNr>m for changing Bands, i.E: "20m"<br>
-enter <xx>dbm for the dBm Information Field<br>
-enter "+" or "-" to calibrate Frequency down(+) or up(-).
+
+Serial Commands:
+    QRG (1400-1600) to send
+    <xx>m for Band (sends@1700), ie 6m..15m..2160m
+    <xx>dbm
+    c   to see current config
+    +/- for changing Calibration +/- 1.46Hz
+    S/s to send Signal@1700(for calib)
+    P/p to switch on/off PA
+    ESC to cancel
 
 All this settings will be saved in the EEPROM of your Arduino and can be resetted by holding D3 LOW while Arduino starts (after reset).
 
