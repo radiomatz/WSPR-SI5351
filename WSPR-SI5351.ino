@@ -14,20 +14,20 @@
 #define BUTTON 3
 #define PWRPIN 4
 #define LED_PIN LED_BUILTIN
+#define PROGID 42  // die Antwort auf alles
 
 // Class instantiation
 Si5351 si5351;
 JTEncode jtencode;
 
-#define PROGID 42                         // die Antwort auf alles
 #define WSPR_TONE_SPACING 146             // ~1.46 Hz
 #define WSPR_DELAY 683                    // Delay value for WSPR
-#define WSPR_DEFAULT_FREQ_2190m   13600UL   // 2190m
-#define WSPR_DEFAULT_FREQ_630m   474200UL   // 630m
-#define WSPR_DEFAULT_FREQ_160m  1836600UL   // 160m
-#define WSPR_DEFAULT_FREQ_80m   3568600UL   // 80m
-#define WSPR_DEFAULT_FREQ_60m   5365600UL   // 60m
-#define WSPR_DEFAULT_FREQ_40m   7038600UL   // 40m
+#define WSPR_DEFAULT_FREQ_2190m   13600UL  // 2190m
+#define WSPR_DEFAULT_FREQ_630m   474200UL  // 630m
+#define WSPR_DEFAULT_FREQ_160m  1836600UL  // 160m
+#define WSPR_DEFAULT_FREQ_80m   3568600UL  // 80m
+#define WSPR_DEFAULT_FREQ_60m   5364700UL  // 60m
+#define WSPR_DEFAULT_FREQ_40m   7038600UL  // 40m
 #define WSPR_DEFAULT_FREQ_30m  10138700UL  // 30m
 #define WSPR_DEFAULT_FREQ_20m  14095600UL  // 20m
 #define WSPR_DEFAULT_FREQ_17m  18104600UL  // 17m
@@ -238,8 +238,9 @@ void setup() {
 
 
 void loop() {
-  if (digitalRead(BUTTON) == LOW || Serial.available()) {
-    if (Serial.available()) {
+  if ( digitalRead(BUTTON) == LOW || Serial.available() ) {
+    
+    if ( Serial.available() ) {
 
       /* is better, but has no echo 
       sein = "";
@@ -256,6 +257,7 @@ void loop() {
             case 127: // DEL (sometimes)
               Serial.println(F("*"));
               goto out;
+
             case '+':
               setcalib(50);
               goto out;
@@ -287,7 +289,7 @@ void loop() {
               digitalWrite(LED_PIN, HIGH);
               Serial.println(F("*Signal ON @ 1700"));
               si5351.output_enable(SI5351_CLK0, 1);
-              si5351.set_freq(mainQRG + 1700UL, SI5351_CLK0);
+              si5351.set_freq((mainQRG + 1700UL) * 100UL, SI5351_CLK0);
               goto out;
               break;
             case 's':
@@ -349,6 +351,7 @@ void loop() {
           } else if ( sein.equals("2190m") ) {
             mainQRG = WSPR_DEFAULT_FREQ_2190m;
           }
+          saveconf();
           showconf();
           goto out;
         } else { 
