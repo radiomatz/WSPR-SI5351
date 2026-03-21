@@ -12,7 +12,7 @@
 
 // Hardware defines
 #define BUTTON 3
-#define PWRPIN 4
+#define PWRPIN 2
 #define LED_PIN LED_BUILTIN
 #define PROGID 42  // die Antwort auf alles
 
@@ -22,7 +22,7 @@ JTEncode jtencode;
 
 #define WSPR_TONE_SPACING 146             // ~1.46 Hz
 #define WSPR_DELAY 683                    // Delay value for WSPR
-#define WSPR_DEFAULT_FREQ_2190m   13600UL  // 2190m
+#define WSPR_DEFAULT_FREQ_2190m  136000UL  // 2190m
 #define WSPR_DEFAULT_FREQ_630m   474200UL  // 630m
 #define WSPR_DEFAULT_FREQ_160m  1836600UL  // 160m
 #define WSPR_DEFAULT_FREQ_80m   3568600UL  // 80m
@@ -47,7 +47,7 @@ unsigned long freq;
 // calib: lower_cal=higher_freq, 1.46 Hz =~ 100 cal
 // SI5351 is very unstable in his frequency when temperature changes on its surface!
 
-long calibration=147300L;  // at the moment, if room is warm or even not :-)
+long calibration=78150L; // 147300L;  // at the moment, if room is warm or even not :-)
 
 unsigned long mainQRG = WSPR_DEFAULT_FREQ_20m;
 char call[13] = "DM2HR";  // size: max 12 + NULL
@@ -90,7 +90,7 @@ void getconf() {
   unsigned long f;
   unsigned int off;
 
-  if ( digitalRead(BUTTON) == LOW ) {
+  if ( sein.compareTo("RESET") == 0 || digitalRead(BUTTON) == LOW ) {
     // if button pressed at startup, reset settings 
     Serial.println(F("resetting EEPROM ..."));
     Serial.flush();
@@ -127,7 +127,7 @@ void saveconf() {
 void printhelp() {
   Serial.println(F("*Help: Enter:"));
   Serial.println(F("  QRG (1400-1600) to send"));
-  Serial.println(F("  <xx>m for Band (sends@1700), ie 6m..15m..2160m"));
+  Serial.println(F("  <xx>m for Band: [6m/10m/12m/15m/17m/20m/30m/40m/60m/80m/160m/630m/2190m]"));
   Serial.println(F("  <xx>dbm"));
   Serial.println(F("  c   to see current config"));
   Serial.println(F("  +/- for changing Calibration +/- 1.46Hz"));
@@ -172,6 +172,7 @@ void encode() {
     si5351.set_freq((freq * 100) + (tx_buffer[i] * tone_spacing), SI5351_CLK0);
     delay(tone_delay);
   }
+
 
   // Turn off the output
   si5351.output_enable(SI5351_CLK0, 0);
@@ -319,9 +320,12 @@ void loop() {
       if ( sein.length() > 0 ) {
         if ( sein.indexOf("dbm") > 0 ) {
             int temp = sein.toInt();
-            if ( temp > 0 && temp < 43 )
+            if ( temp >= 0 && temp < 43 )
               dbm = temp;
             showconf();
+            goto out;
+        } else if ( sein.compareTo("RESET") == 0 ) {
+            getconf();
             goto out;
         } else if ( sein.indexOf("m") > 0 ) {
           if ( sein.equals("6m") ) {
@@ -350,6 +354,9 @@ void loop() {
             mainQRG = WSPR_DEFAULT_FREQ_630m;
           } else if ( sein.equals("2190m") ) {
             mainQRG = WSPR_DEFAULT_FREQ_2190m;
+          } else {
+            Serial.print(F("!!! Unknown Band: "));
+            Serial.println(sein);
           }
           saveconf();
           showconf();
