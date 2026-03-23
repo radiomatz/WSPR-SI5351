@@ -22,19 +22,19 @@ JTEncode jtencode;
 
 #define WSPR_TONE_SPACING 146             // ~1.46 Hz
 #define WSPR_DELAY 683                    // Delay value for WSPR
-#define WSPR_DEFAULT_FREQ_2190m  136000UL  // 2190m
-#define WSPR_DEFAULT_FREQ_630m   474200UL  // 630m
-#define WSPR_DEFAULT_FREQ_160m  1836600UL  // 160m
-#define WSPR_DEFAULT_FREQ_80m   3568600UL  // 80m
-#define WSPR_DEFAULT_FREQ_60m   5364700UL  // 60m
-#define WSPR_DEFAULT_FREQ_40m   7038600UL  // 40m
-#define WSPR_DEFAULT_FREQ_30m  10138700UL  // 30m
-#define WSPR_DEFAULT_FREQ_20m  14095600UL  // 20m
-#define WSPR_DEFAULT_FREQ_17m  18104600UL  // 17m
-#define WSPR_DEFAULT_FREQ_15m  21094600UL  // 15m
-#define WSPR_DEFAULT_FREQ_12m  24924600UL  // 12m
-#define WSPR_DEFAULT_FREQ_10m  28124600UL  // 10m
-#define WSPR_DEFAULT_FREQ_6m   50293000UL  // 6m
+#define WSPR_DEFAULT_FREQ_2190m 136000UL  // 2190m
+#define WSPR_DEFAULT_FREQ_630m 474200UL   // 630m
+#define WSPR_DEFAULT_FREQ_160m 1836600UL  // 160m
+#define WSPR_DEFAULT_FREQ_80m 3568600UL   // 80m
+#define WSPR_DEFAULT_FREQ_60m 5364700UL   // 60m
+#define WSPR_DEFAULT_FREQ_40m 7038600UL   // 40m
+#define WSPR_DEFAULT_FREQ_30m 10138700UL  // 30m
+#define WSPR_DEFAULT_FREQ_20m 14095600UL  // 20m
+#define WSPR_DEFAULT_FREQ_17m 18104600UL  // 17m
+#define WSPR_DEFAULT_FREQ_15m 21094600UL  // 15m
+#define WSPR_DEFAULT_FREQ_12m 24924600UL  // 12m
+#define WSPR_DEFAULT_FREQ_10m 28124600UL  // 10m
+#define WSPR_DEFAULT_FREQ_6m 50293000UL   // 6m
 
 // Global variables
 unsigned long freq;
@@ -47,7 +47,7 @@ unsigned long freq;
 // calib: lower_cal=higher_freq, 1.46 Hz =~ 100 cal
 // SI5351 is very unstable in his frequency when temperature changes on its surface!
 
-long calibration=78150L; // 147300L;  // at the moment, if room is warm or even not :-)
+long calibration = 78150L;  // 147300L;  // at the moment, if room is warm or even not :-)
 
 unsigned long mainQRG = WSPR_DEFAULT_FREQ_20m;
 char call[13] = "DM2HR";  // size: max 12 + NULL
@@ -68,11 +68,11 @@ uint8_t id = 0;
 uint8_t tx_buffer[255];
 uint8_t symbol_count;
 uint16_t tone_delay, tone_spacing;
-
+bool out = false;
 
 void setcalib(int inc) {
   calibration += inc;
-  EEPROM.put(PROGID + sizeof(uint8_t) + sizeof(unsigned long)+sizeof(unsigned int), calibration);
+  EEPROM.put(PROGID + sizeof(uint8_t) + sizeof(unsigned long) + sizeof(unsigned int), calibration);
   si5351.set_correction(calibration, SI5351_PLL_INPUT_XO);
   si5351.set_pll(SI5351_PLL_FIXED, SI5351_PLLA);
   si5351.pll_reset(SI5351_PLLB);
@@ -90,16 +90,17 @@ void getconf() {
   unsigned long f;
   unsigned int off;
 
-  if ( sein.compareTo("RESET") == 0 || digitalRead(BUTTON) == LOW ) {
-    // if button pressed at startup, reset settings 
+  if (sein.compareTo("RESET") == 0 || digitalRead(BUTTON) == LOW) {
+    // if button pressed at startup, reset settings
     Serial.println(F("resetting EEPROM ..."));
     Serial.flush();
-    for (int i = 0 ; i < EEPROM.length() ; i++) {
+    for (int i = 0; i < EEPROM.length(); i++) {
       EEPROM.write(i, 0);
     }
     Serial.println(F("now press RESET!"));
     Serial.flush();
-    while(1);
+    while (1)
+      ;
   }
   EEPROM.get(PROGID, id);
   if (id == PROGID) {
@@ -138,8 +139,8 @@ void printhelp() {
 
 
 // for powering on a external PA, here: BS170, see Circuit description at github
-void poweron ( bool onoff ) {
-  if ( onoff )
+void poweron(bool onoff) {
+  if (onoff)
     digitalWrite(PWRPIN, HIGH);
   else
     digitalWrite(PWRPIN, LOW);
@@ -183,22 +184,22 @@ void encode() {
 void showconf() {
   Serial.print(F("*Config:"));
   Serial.print(F("call="));
-  Serial.print( call );
-  Serial.print(F(", loc=")); 
-  Serial.print( loc );
+  Serial.print(call);
+  Serial.print(F(", loc="));
+  Serial.print(loc);
   Serial.print(F(", dBm="));
-  Serial.print( dbm );
-  Serial.print(F(", wsprQRG=")); 
-  Serial.print( wsprQRG );
-  Serial.print(F(", mainQRG=")); 
-  Serial.println( mainQRG );
+  Serial.print(dbm);
+  Serial.print(F(", wsprQRG="));
+  Serial.print(wsprQRG);
+  Serial.print(F(", mainQRG="));
+  Serial.println(mainQRG);
 }
 
 
 void prompt() {
-    Serial.print(F("READY@") );
-    Serial.print(wsprQRG);
-    Serial.print(F(">"));
+  Serial.print(F("READY@"));
+  Serial.print(wsprQRG);
+  Serial.print(F(">"));
 }
 
 
@@ -206,7 +207,7 @@ void prompt() {
 void setup() {
   Serial.begin(115200);
   Serial.setTimeout(3600000UL);
- 
+
   // Use the Arduino's on-board LED as a keying indicator.
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
@@ -227,7 +228,7 @@ void setup() {
     delay(2500);
   }
   setcalib(0);
-  si5351.output_enable(SI5351_CLK0, 0);                  // Disable the clock initially
+  si5351.output_enable(SI5351_CLK0, 0);  // Disable the clock initially
   Serial.println(F("\nSI5351 started successfully."));
 
   showconf();
@@ -239,70 +240,78 @@ void setup() {
 
 
 void loop() {
-  if ( digitalRead(BUTTON) == LOW || Serial.available() ) {
-    
-    if ( Serial.available() ) {
+  if (digitalRead(BUTTON) == LOW || Serial.available()) {
+
+    out = false;
+
+    if (Serial.available()) {
 
       /* is better, but has no echo 
-      sein = "";
-      sein = Serial.readStringUntil('\r');
+        sein = "";
+        sein = Serial.readStringUntil('\r');
       */
 
       do {
+
         if (Serial.available()) {
           c = Serial.read();
           Serial.print(c);
-          
-          switch(c) {
-            case 27: // ESC
-            case 127: // DEL (sometimes)
+
+          switch (c) {
+            case 27:   // ESC
+            case 127:  // DEL (sometimes)
               Serial.println(F("*"));
-              goto out;
+              out = true;
+              break;
 
             case '+':
               setcalib(50);
-              goto out;
+              out = true;
               break;
             case '-':
               setcalib(-50);
-              goto out;
+              out = true;
               break;
 
             case 'h':
             case '?':
               printhelp();
-              goto out;
+              out = true;
+              break;
 
             case 'c':
               showconf();
-              goto out;
+              out = true;
+              break;
 
             case 'P':
               Serial.println(F("*PA=ON"));
               poweron(true);
-              goto out;
+              out = true;
+              break;
             case 'p':
               Serial.println(F("*PA=OFF"));
               poweron(false);
-              goto out;
+              out = true;
+              break;
 
             case 'S':
               digitalWrite(LED_PIN, HIGH);
               Serial.println(F("*Signal ON @ 1700"));
               si5351.output_enable(SI5351_CLK0, 1);
               si5351.set_freq((mainQRG + 1700UL) * 100UL, SI5351_CLK0);
-              goto out;
+              out = true;
               break;
             case 's':
               digitalWrite(LED_PIN, LOW);
               Serial.println(F("*Signal=OFF"));
               si5351.output_enable(SI5351_CLK0, 0);
-              goto out;
+              out = true;
               break;
 
-            case 0x08: // ^H, Backspace
-              if (c == 8 && sein.length() > 0)  
-                sein.remove(sein.length() - 1);    
+            case 0x08:  // ^H, Backspace
+              if (c == 8 && sein.length() > 0)
+                sein.remove(sein.length() - 1);
               break;
 
             default:
@@ -310,88 +319,90 @@ void loop() {
               break;
           }
         }
-      } while (c != 0x0d && c != 0x0a);
-      sein.remove(sein.length() - 1); // remove CR
-      
-      while (Serial.available()) {  // NL, CR and any accidentally typed things
-        c = Serial.read();
-      }
+      } while (!out && c != 0x0d && c != 0x0a);
 
-      if ( sein.length() > 0 ) {
-        if ( sein.indexOf("dbm") > 0 ) {
+      if (!out) {
+
+        sein.remove(sein.length() - 1);  // remove CR
+
+        while (Serial.available()) {  // NL, CR and any accidentally typed things
+          c = Serial.read();
+        }
+
+        if (sein.length() > 0) {
+          if (sein.indexOf("dbm") > 0) {
             int temp = sein.toInt();
-            if ( temp >= 0 && temp < 43 )
+            if (temp >= 0 && temp < 43)
               dbm = temp;
             showconf();
-            goto out;
-        } else if ( sein.compareTo("RESET") == 0 ) {
+            out = true;
+          } else if (sein.compareTo("RESET") == 0) {
             getconf();
-            goto out;
-        } else if ( sein.indexOf("m") > 0 ) {
-          if ( sein.equals("6m") ) {
-            mainQRG = WSPR_DEFAULT_FREQ_6m;
-          } else if ( sein.equals("10m") ) {
-            mainQRG = WSPR_DEFAULT_FREQ_10m;
-          } else if ( sein.equals("12m") ) {
-            mainQRG = WSPR_DEFAULT_FREQ_12m;
-          } else if ( sein.equals("15m") ) {
-            mainQRG = WSPR_DEFAULT_FREQ_15m;
-          } else if ( sein.equals("17m") ) {
-            mainQRG = WSPR_DEFAULT_FREQ_17m;
-          } else if ( sein.equals("20m") ) {
-            mainQRG = WSPR_DEFAULT_FREQ_20m;
-          } else if ( sein.equals("30m") ) {
-            mainQRG = WSPR_DEFAULT_FREQ_30m;
-          } else if ( sein.equals("40m") ) {
-            mainQRG = WSPR_DEFAULT_FREQ_40m;
-          } else if ( sein.equals("60m") ) {
-            mainQRG = WSPR_DEFAULT_FREQ_60m;
-          } else if ( sein.equals("80m") ) {
-            mainQRG = WSPR_DEFAULT_FREQ_80m;
-          } else if ( sein.equals("160m") ) {
-            mainQRG = WSPR_DEFAULT_FREQ_160m;
-          } else if ( sein.equals("630m") ) {
-            mainQRG = WSPR_DEFAULT_FREQ_630m;
-          } else if ( sein.equals("2190m") ) {
-            mainQRG = WSPR_DEFAULT_FREQ_2190m;
+            out = true;
+          } else if (sein.indexOf("m") > 0) {
+            if (sein.equals("6m")) {
+              mainQRG = WSPR_DEFAULT_FREQ_6m;
+            } else if (sein.equals("10m")) {
+              mainQRG = WSPR_DEFAULT_FREQ_10m;
+            } else if (sein.equals("12m")) {
+              mainQRG = WSPR_DEFAULT_FREQ_12m;
+            } else if (sein.equals("15m")) {
+              mainQRG = WSPR_DEFAULT_FREQ_15m;
+            } else if (sein.equals("17m")) {
+              mainQRG = WSPR_DEFAULT_FREQ_17m;
+            } else if (sein.equals("20m")) {
+              mainQRG = WSPR_DEFAULT_FREQ_20m;
+            } else if (sein.equals("30m")) {
+              mainQRG = WSPR_DEFAULT_FREQ_30m;
+            } else if (sein.equals("40m")) {
+              mainQRG = WSPR_DEFAULT_FREQ_40m;
+            } else if (sein.equals("60m")) {
+              mainQRG = WSPR_DEFAULT_FREQ_60m;
+            } else if (sein.equals("80m")) {
+              mainQRG = WSPR_DEFAULT_FREQ_80m;
+            } else if (sein.equals("160m")) {
+              mainQRG = WSPR_DEFAULT_FREQ_160m;
+            } else if (sein.equals("630m")) {
+              mainQRG = WSPR_DEFAULT_FREQ_630m;
+            } else if (sein.equals("2190m")) {
+              mainQRG = WSPR_DEFAULT_FREQ_2190m;
+            } else {
+              Serial.print(F("!!! Unknown Band: "));
+              Serial.println(sein);
+            }
+            saveconf();
+            showconf();
+            out = true;
           } else {
-            Serial.print(F("!!! Unknown Band: "));
-            Serial.println(sein);
+            qrgin = sein.toInt();
           }
+        }
+        // normally 1400-1600, but for testing purposes greater for not disturbing others
+        if (qrgin > 0 && qrgin <= 2700) {
+          wsprQRG = qrgin;
+        }
+
+        freq = mainQRG + wsprQRG;
+        now = millis() / 1000;
+
+        if (wsprQRG > 0) {
+          Serial.println();
+          Serial.print(F(" ... sending now("));
+          Serial.print(now);
+          Serial.print(F(") on "));
+          Serial.print(mainQRG);
+          Serial.print(F(" + "));
+          Serial.print(wsprQRG);
+          Serial.print(F(" = "));
+          Serial.println(freq);
+
+          poweron(true);
           saveconf();
-          showconf();
-          goto out;
-        } else { 
-          qrgin = sein.toInt();
+          encode();
+          poweron(false);
         }
       }
-      // normally 1400-1600, but for testing purposes greater for not disturbing others
-      if (qrgin > 0 && qrgin <= 2700) {
-        wsprQRG = qrgin;
-      }
     }
-
-    freq = mainQRG + wsprQRG;
-    now = millis() / 1000;
-
-    if (wsprQRG > 0) {
-      Serial.println();
-      Serial.print(F(" ... sending now("));
-      Serial.print( now );
-      Serial.print(F(") on "));
-      Serial.print( mainQRG );
-      Serial.print(F(" + "));
-      Serial.print( wsprQRG );
-      Serial.print(F(" = "));
-      Serial.println( freq );
-
-      poweron(true);
-      saveconf();
-      encode();
-      poweron(false);
-    }
-
-    out:
 
     sein = "";
     prompt();
