@@ -240,17 +240,12 @@ void setup() {
 
 
 void loop() {
+
+  out = false;
+
   if (digitalRead(BUTTON) == LOW || Serial.available()) {
 
-    out = false;
-
     if (Serial.available()) {
-
-      /* is better, but has no echo 
-        sein = "";
-        sein = Serial.readStringUntil('\r');
-      */
-
       do {
 
         if (Serial.available()) {
@@ -320,87 +315,91 @@ void loop() {
           }
         }
       } while (!out && c != 0x0d && c != 0x0a);
+    }
 
-      if (!out) {
+    if (!out) {
 
+      while (Serial.available()) {  // NL, CR and any accidentally typed things
+        c = Serial.read();
+      }
+
+      if (sein.length() > 0) {
         sein.remove(sein.length() - 1);  // remove CR
-
-        while (Serial.available()) {  // NL, CR and any accidentally typed things
-          c = Serial.read();
-        }
-
-        if (sein.length() > 0) {
-          if (sein.indexOf("dbm") > 0) {
-            int temp = sein.toInt();
-            if (temp >= 0 && temp < 43)
-              dbm = temp;
-            showconf();
-            out = true;
-          } else if (sein.compareTo("RESET") == 0) {
-            getconf();
-            out = true;
-          } else if (sein.indexOf("m") > 0) {
-            if (sein.equals("6m")) {
-              mainQRG = WSPR_DEFAULT_FREQ_6m;
-            } else if (sein.equals("10m")) {
-              mainQRG = WSPR_DEFAULT_FREQ_10m;
-            } else if (sein.equals("12m")) {
-              mainQRG = WSPR_DEFAULT_FREQ_12m;
-            } else if (sein.equals("15m")) {
-              mainQRG = WSPR_DEFAULT_FREQ_15m;
-            } else if (sein.equals("17m")) {
-              mainQRG = WSPR_DEFAULT_FREQ_17m;
-            } else if (sein.equals("20m")) {
-              mainQRG = WSPR_DEFAULT_FREQ_20m;
-            } else if (sein.equals("30m")) {
-              mainQRG = WSPR_DEFAULT_FREQ_30m;
-            } else if (sein.equals("40m")) {
-              mainQRG = WSPR_DEFAULT_FREQ_40m;
-            } else if (sein.equals("60m")) {
-              mainQRG = WSPR_DEFAULT_FREQ_60m;
-            } else if (sein.equals("80m")) {
-              mainQRG = WSPR_DEFAULT_FREQ_80m;
-            } else if (sein.equals("160m")) {
-              mainQRG = WSPR_DEFAULT_FREQ_160m;
-            } else if (sein.equals("630m")) {
-              mainQRG = WSPR_DEFAULT_FREQ_630m;
-            } else if (sein.equals("2190m")) {
-              mainQRG = WSPR_DEFAULT_FREQ_2190m;
-            } else {
-              Serial.print(F("!!! Unknown Band: "));
-              Serial.println(sein);
-            }
-            saveconf();
-            showconf();
-            out = true;
+        if (sein.indexOf("dbm") > 0) {
+          int temp = sein.toInt();
+          if (temp >= 0 && temp < 43)
+            dbm = temp;
+          showconf();
+          out = true;
+        } else if (sein.compareTo("RESET") == 0) {
+          getconf();
+          out = true;
+        } else if (sein.indexOf("m") > 0) {
+          if (sein.equals("6m")) {
+            mainQRG = WSPR_DEFAULT_FREQ_6m;
+          } else if (sein.equals("10m")) {
+            mainQRG = WSPR_DEFAULT_FREQ_10m;
+          } else if (sein.equals("12m")) {
+            mainQRG = WSPR_DEFAULT_FREQ_12m;
+          } else if (sein.equals("15m")) {
+            mainQRG = WSPR_DEFAULT_FREQ_15m;
+          } else if (sein.equals("17m")) {
+            mainQRG = WSPR_DEFAULT_FREQ_17m;
+          } else if (sein.equals("20m")) {
+            mainQRG = WSPR_DEFAULT_FREQ_20m;
+          } else if (sein.equals("30m")) {
+            mainQRG = WSPR_DEFAULT_FREQ_30m;
+          } else if (sein.equals("40m")) {
+            mainQRG = WSPR_DEFAULT_FREQ_40m;
+          } else if (sein.equals("60m")) {
+            mainQRG = WSPR_DEFAULT_FREQ_60m;
+          } else if (sein.equals("80m")) {
+            mainQRG = WSPR_DEFAULT_FREQ_80m;
+          } else if (sein.equals("160m")) {
+            mainQRG = WSPR_DEFAULT_FREQ_160m;
+          } else if (sein.equals("630m")) {
+            mainQRG = WSPR_DEFAULT_FREQ_630m;
+          } else if (sein.equals("2190m")) {
+            mainQRG = WSPR_DEFAULT_FREQ_2190m;
           } else {
-            qrgin = sein.toInt();
+            Serial.print(F("!!! Unknown Band: "));
+            Serial.println(sein);
           }
+          saveconf();
+          showconf();
+          out = true;
+        } else {
+          qrgin = sein.toInt();
         }
+
         // normally 1400-1600, but for testing purposes greater for not disturbing others
         if (qrgin > 0 && qrgin <= 2700) {
           wsprQRG = qrgin;
         }
+      }
 
-        freq = mainQRG + wsprQRG;
-        now = millis() / 1000;
+      Serial.println(wsprQRG);
+      Serial.println(qrgin);
 
-        if (wsprQRG > 0) {
-          Serial.println();
-          Serial.print(F(" ... sending now("));
-          Serial.print(now);
-          Serial.print(F(") on "));
-          Serial.print(mainQRG);
-          Serial.print(F(" + "));
-          Serial.print(wsprQRG);
-          Serial.print(F(" = "));
-          Serial.println(freq);
 
-          poweron(true);
-          saveconf();
-          encode();
-          poweron(false);
-        }
+      freq = mainQRG + wsprQRG;
+      now = millis() / 1000;
+
+      if (wsprQRG > 0) {
+        Serial.println();
+        Serial.print(F(" ... sending now("));
+        Serial.print(now);
+        Serial.print(F(") on "));
+        Serial.print(mainQRG);
+        Serial.print(F(" + "));
+        Serial.print(wsprQRG);
+        Serial.print(F(" = "));
+        Serial.println(freq);
+
+        poweron(true);
+        saveconf();
+        encode();
+        poweron(false);
       }
     }
 
