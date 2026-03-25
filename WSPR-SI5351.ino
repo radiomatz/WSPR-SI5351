@@ -335,6 +335,7 @@ void loop() {
           getconf();
           out = true;
         } else if (sein.indexOf("m") > 0) {
+          out = true;
           if (sein.equals("6m")) {
             mainQRG = WSPR_DEFAULT_FREQ_6m;
           } else if (sein.equals("10m")) {
@@ -378,28 +379,27 @@ void loop() {
         }
       }
 
-      Serial.println(wsprQRG);
-      Serial.println(qrgin);
+      if (!out) {
 
+        freq = mainQRG + wsprQRG;
+        now = millis() / 1000;
 
-      freq = mainQRG + wsprQRG;
-      now = millis() / 1000;
+        if (wsprQRG > 0) {
+          Serial.println();
+          Serial.print(F(" ... sending now("));
+          Serial.print(now);
+          Serial.print(F(") on "));
+          Serial.print(mainQRG);
+          Serial.print(F(" + "));
+          Serial.print(wsprQRG);
+          Serial.print(F(" = "));
+          Serial.println(freq);
 
-      if (wsprQRG > 0) {
-        Serial.println();
-        Serial.print(F(" ... sending now("));
-        Serial.print(now);
-        Serial.print(F(") on "));
-        Serial.print(mainQRG);
-        Serial.print(F(" + "));
-        Serial.print(wsprQRG);
-        Serial.print(F(" = "));
-        Serial.println(freq);
-
-        poweron(true);
-        saveconf();
-        encode();
-        poweron(false);
+          poweron(true);
+          saveconf();
+          encode();
+          poweron(false);
+        }
       }
     }
 
