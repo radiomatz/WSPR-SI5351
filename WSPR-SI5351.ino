@@ -45,9 +45,9 @@ unsigned long freq;
 
 // Calibration: see "Etherkit SI5351" Library: si5351_calibration example
 // calib: lower_cal=higher_freq, 1.46 Hz =~ 100 cal
-// SI5351 is very unstable in his frequency when temperature changes on its surface!
+// SI5351/resp the quartz is very unstable in his frequency when temperature changes on its surface it!
 
-long calibration = 78150L;  // 147300L;  // at the moment, if room is warm or even not :-)
+long calibration = 74850L;  // 147300L;  // at the moment, if room is warm or even not :-)
 
 unsigned long mainQRG = WSPR_DEFAULT_FREQ_20m;
 char call[13] = "DM2HR";  // size: max 12 + NULL
@@ -126,15 +126,16 @@ void saveconf() {
 
 
 void printhelp() {
-  Serial.println(F("*Help: Enter:"));
+  Serial.println(F("*Help - Enter:"));
   Serial.println(F("  QRG (1400-1600) to send"));
   Serial.println(F("  <xx>m for Band: [6m/10m/12m/15m/17m/20m/30m/40m/60m/80m/160m/630m/2190m]"));
   Serial.println(F("  <xx>dbm"));
   Serial.println(F("  c   to see current config"));
-  Serial.println(F("  +/- for changing Calibration +/- 1.46Hz"));
-  Serial.println(F("  S/s to send Signal@1700(for calib)"));
-  Serial.println(F("  P/p to switch on/off PA"));
-  Serial.println(F("  ESC to cancel"));
+  Serial.println(F("  +/- for changing Calibration -/+ 1.46Hz"));
+  Serial.println(F("  S/s to send Signal@1700(for calib) ON/off"));
+  Serial.println(F("  P/p to switch ON/off PA"));
+  Serial.println(F("  RESET to set EEPROM to defaults"));
+  Serial.println(F("  ESC to cancel input"));
 }
 
 
