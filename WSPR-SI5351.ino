@@ -14,7 +14,7 @@
 #define BUTTON 3
 #define PWRPIN 2
 #define LED_PIN LED_BUILTIN
-#define PROGID 42  // die Antwort auf alles
+#define PROGID 42  // the answer to the universe and to all 
 
 // Class instantiation
 Si5351 si5351;
@@ -45,7 +45,7 @@ unsigned long freq;
 
 // Calibration: see "Etherkit SI5351" Library: si5351_calibration example
 // calib: lower_cal=higher_freq, 1.46 Hz =~ 100 cal
-// SI5351/resp the quartz is very unstable in his frequency when temperature changes on its surface it!
+// SI5351/resp the quartz is very unstable in his frequency when temperature changes on its surface!
 
 long calibration = 74850L;  // 147300L;  // at the moment, if room is warm or even not :-)
 
@@ -224,13 +224,15 @@ void setup() {
   // Initialize the Si5351
   // Change the 2nd parameter in init if using a ref osc other
   // than 25 MHz
+  Serial.println(F("\ninit SI5351 now...."));
   while (!si5351.init(SI5351_CRYSTAL_LOAD_8PF, 0, 0)) {
     Serial.println(F("\nError init SI5351, check Cables!"));
     delay(2500);
   }
+  Serial.println(F("\nSI5351 started successfully."));
+
   setcalib(0);
   si5351.output_enable(SI5351_CLK0, 0);  // Disable the clock initially
-  Serial.println(F("\nSI5351 started successfully."));
 
   showconf();
 
@@ -306,7 +308,7 @@ void loop() {
               break;
 
             case 0x08:  // ^H, Backspace
-              if (c == 8 && sein.length() > 0)
+              if (sein.length() > 0)
                 sein.remove(sein.length() - 1);
               break;
 
