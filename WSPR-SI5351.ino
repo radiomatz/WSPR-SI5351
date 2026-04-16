@@ -51,7 +51,7 @@ long calibration = 74850L;  // 147300L;  // at the moment, if room is warm or ev
 
 unsigned long mainQRG = WSPR_DEFAULT_FREQ_20m;
 char call[13] = "DM2HR";  // size: max 12 + NULL
-char loc[7] = "JN58";     // size: max 6 + NULL
+char loc[7] = "JN58II";     // size: max 6 + NULL
 uint8_t dbm = 13;
 unsigned int wsprQRG = 1700;  // Standard QRG for Push Button start
 
@@ -62,6 +62,10 @@ unsigned int wsprQRG = 1700;  // Standard QRG for Push Button start
 String sein = "";
 int qrgin = -1;
 unsigned long now = 0;
+unsigned long offset = 0;
+unsigned long ltime = 0;
+uint8_t lmin = 0;
+uint8_t lsec = 0;
 char c = 0;
 uint8_t id = 0;
 
@@ -69,6 +73,8 @@ uint8_t tx_buffer[255];
 uint8_t symbol_count;
 uint16_t tone_delay, tone_spacing;
 bool out = false;
+bool iauto = false;
+uint8_t intervall = 0;
 
 void setcalib(int inc) {
   calibration += inc;
@@ -127,9 +133,10 @@ void saveconf() {
 
 void printhelp() {
   Serial.println(F("*Help - Enter:"));
-  Serial.println(F("  QRG (1400-1600) to send"));
+  Serial.println(F("  QRG (1400-1600) or <RETURN> to send"));
   Serial.println(F("  <xx>m for Band: [6m/10m/12m/15m/17m/20m/30m/40m/60m/80m/160m/630m/2190m]"));
   Serial.println(F("  <xx>dbm"));
+  Serial.println(F("  auto <i>/off for sending every <i> minutes / switch off automatic after first manual send"));
   Serial.println(F("  c   to see current config"));
   Serial.println(F("  +/- for changing Calibration -/+ 1.46Hz"));
   Serial.println(F("  S/s to send Signal@1700(for calib) ON/off"));
@@ -198,11 +205,26 @@ void showconf() {
 
 
 void prompt() {
-  Serial.print(F("READY@"));
+  if ( !iauto )
+    Serial.print(F("READY@"));
+  else {
+    disptime();
+    Serial.print('@');
+  }
   Serial.print(wsprQRG);
   Serial.print(F(">"));
 }
 
+
+void disptime() {
+  if ( lmin <  10 )
+    Serial.print('0');
+  Serial.print(lmin);
+  Serial.print(':');
+  if ( lsec < 10 )
+    Serial.print('0');
+  Serial.print(lsec);
+}
 
 
 void setup() {
@@ -243,10 +265,25 @@ void setup() {
 
 
 void loop() {
+static bool run = false;
 
   out = false;
 
-  if (digitalRead(BUTTON) == LOW || Serial.available()) {
+  if ( iauto && offset > 0 ) {
+    now = millis() / 1000;
+    ltime = now - offset;
+    lmin = ltime / 60;
+    lsec = ltime % 60;
+    if ( ltime % (intervall * 60) == 0 ) {
+      run = true;
+    } else {
+      run = false;
+      Serial.print(F("\r"));
+      prompt();
+    }
+  }
+
+  if (digitalRead(BUTTON) == LOW || Serial.available() || run ) {
 
     if (Serial.available()) {
       do {
@@ -327,8 +364,33 @@ void loop() {
       }
 
       if (sein.length() > 0) {
+
         sein.remove(sein.length() - 1);  // remove CR
-        if (sein.indexOf("dbm") > 0) {
+        Serial.println();
+
+        if ( sein.indexOf("auto") >= 0 ) {
+          iauto = true;
+          if ( sein.indexOf("off") < 0 )
+            intervall = sein.substring(4).toInt();
+          else {
+            iauto = false;
+          }
+          if ( iauto ) {
+            if ( offset == 0 ) {
+              Serial.println(F("First run manual for setting start time"));
+              iauto = false;
+            } else {
+              if ( intervall > 9 ) {
+                intervall /= 2;
+                intervall *= 2; // for getting start  of period
+              } else {
+                Serial.println(F("Intervall too small (at least 10 Min)"));
+                iauto = false;
+              }
+            }
+          }
+          out = true;
+        } else if (sein.indexOf("dbm") > 0) {
           int temp = sein.toInt();
           if (temp >= 0 && temp < 43)
             dbm = temp;
@@ -386,11 +448,16 @@ void loop() {
 
         freq = mainQRG + wsprQRG;
         now = millis() / 1000;
+        if ( offset == 0 ) {
+          offset = now;
+        }
+        ltime = now - offset;
+        lmin = ltime / 60;
+        lsec = ltime % 60;
 
         if (wsprQRG > 0) {
-          Serial.println();
           Serial.print(F(" ... sending now("));
-          Serial.print(now);
+          disptime();  
           Serial.print(F(") on "));
           Serial.print(mainQRG);
           Serial.print(F(" + "));
