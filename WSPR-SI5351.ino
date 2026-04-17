@@ -64,8 +64,7 @@ int qrgin = -1;
 unsigned long now = 0;
 unsigned long offset = 0;
 unsigned long ltime = 0;
-uint8_t lmin = 0;
-uint8_t lsec = 0;
+uint8_t lmin = 0, lsec = 0, oldsec = 0;
 char c = 0;
 uint8_t id = 0;
 
@@ -105,8 +104,7 @@ void getconf() {
     }
     Serial.println(F("now press RESET!"));
     Serial.flush();
-    while (1)
-      ;
+    while (1);
   }
   EEPROM.get(PROGID, id);
   if (id == PROGID) {
@@ -133,16 +131,16 @@ void saveconf() {
 
 void printhelp() {
   Serial.println(F("*Help - Enter:"));
-  Serial.println(F("  QRG (1400-1600) or <RETURN> to send"));
+  Serial.println(F("  <QRG> (1400-1600) or <RETURN> to send"));
   Serial.println(F("  <xx>m for Band: [6m/10m/12m/15m/17m/20m/30m/40m/60m/80m/160m/630m/2190m]"));
-  Serial.println(F("  <xx>dbm"));
-  Serial.println(F("  auto <i>/off for sending every <i> minutes / switch off automatic after first manual send"));
+  Serial.println(F("  <xx>dbm for setting db info field"));
+  Serial.println(F("  auto <i>/off for sending automatically every <i> / off minutes"));
   Serial.println(F("  c   to see current config"));
   Serial.println(F("  +/- for changing Calibration -/+ 1.46Hz"));
   Serial.println(F("  S/s to send Signal@1700(for calib) ON/off"));
   Serial.println(F("  P/p to switch ON/off PA"));
   Serial.println(F("  RESET to set EEPROM to defaults"));
-  Serial.println(F("  ESC to cancel input"));
+  Serial.println(F("  <ESC> to cancel input"));
 }
 
 
@@ -278,8 +276,11 @@ static bool run = false;
       run = true;
     } else {
       run = false;
-      Serial.print(F("\r"));
-      prompt();
+      if ( oldsec != lsec ) {
+        oldsec = lsec;
+        Serial.print(F("\r"));
+        prompt();
+      }
     }
   }
 
@@ -383,6 +384,9 @@ static bool run = false;
               if ( intervall > 9 ) {
                 intervall /= 2;
                 intervall *= 2; // for getting start  of period
+                Serial.print(F("... sending every "));
+                Serial.print(intervall);
+                Serial.println(F(" Minutes or until \"auto off\"."));
               } else {
                 Serial.println(F("Intervall too small (at least 10 Min)"));
                 iauto = false;
@@ -448,7 +452,7 @@ static bool run = false;
 
         freq = mainQRG + wsprQRG;
         now = millis() / 1000;
-        if ( offset == 0 ) {
+        if ( !iauto ) {
           offset = now;
         }
         ltime = now - offset;
