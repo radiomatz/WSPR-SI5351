@@ -61,9 +61,9 @@ unsigned int wsprQRG = 1700;  // Standard QRG for Push Button start
 
 String sein = "";
 int qrgin = -1;
-unsigned long now = 0;
-unsigned long offset = 0;
-unsigned long ltime = 0;
+
+#define DELAY 50
+unsigned long now = 0, offset = 0, ltime = 0;
 uint8_t lmin = 0, lsec = 0, oldsec = 0;
 char c = 0;
 uint8_t id = 0;
@@ -225,6 +225,18 @@ void disptime() {
 }
 
 
+void printtime(unsigned long t) {
+static unsigned long ulrest;
+  lmin = t / 60000;
+  lsec = (t / 1000) % 60;
+  ulrest = t - lmin * 60000 - lsec * 1000;
+  disptime();
+  Serial.print('.');
+  Serial.print(ulrest);
+}
+
+
+
 void setup() {
   Serial.begin(115200);
   Serial.setTimeout(3600000UL);
@@ -268,11 +280,11 @@ static bool run = false;
   out = false;
 
   if ( iauto && offset > 0 ) {
-    now = millis() / 1000;
+    now = millis();
     ltime = now - offset;
-    lmin = ltime / 60;
-    lsec = ltime % 60;
-    if ( ltime % (intervall * 60) == 0 ) {
+    lmin = ltime / 60000;
+    lsec = (ltime / 1000) % 60;
+    if ( ltime % (intervall * 60000UL) <= DELAY ) {
       run = true;
     } else {
       run = false;
@@ -449,19 +461,18 @@ static bool run = false;
       }
 
       if (!out) {
-
         freq = mainQRG + wsprQRG;
-        now = millis() / 1000;
-        if ( !iauto ) {
+        now = millis();
+        if ( !iauto && offset == 0 ) {
           offset = now;
         }
         ltime = now - offset;
-        lmin = ltime / 60;
-        lsec = ltime % 60;
+        lmin = ltime / 60000UL;
+        lsec = (ltime / 1000) % 60L;
 
         if (wsprQRG > 0) {
           Serial.print(F(" ... sending now("));
-          disptime();  
+          printtime(millis());  
           Serial.print(F(") on "));
           Serial.print(mainQRG);
           Serial.print(F(" + "));
@@ -476,9 +487,8 @@ static bool run = false;
         }
       }
     }
-
     sein = "";
     prompt();
   }
-  delay(50);
+  delay(DELAY);
 }
