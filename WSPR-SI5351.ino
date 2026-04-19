@@ -229,7 +229,7 @@ void printtime(unsigned long t) {
 static unsigned long ulrest;
   lmin = t / 60000;
   lsec = (t / 1000) % 60;
-  ulrest = t - lmin * 60000 - lsec * 1000;
+  ulrest = t - (lmin * 60000UL) - (lsec * 1000UL);
   disptime();
   Serial.print('.');
   Serial.print(ulrest);
