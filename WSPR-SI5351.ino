@@ -51,7 +51,7 @@ long calibration = 74850L;  // 147300L;  // at the moment, if room is warm or ev
 
 unsigned long mainQRG = WSPR_DEFAULT_FREQ_20m;
 char call[13] = "DM2HR";  // size: max 12 + NULL
-char loc[7] = "JN58II";     // size: max 6 + NULL
+char loc[7] = "JN58";     // size: max 6 + NULL, but this WSPR takes only 4
 uint8_t dbm = 13;
 unsigned int wsprQRG = 1700;  // Standard QRG for Push Button start
 
@@ -63,8 +63,11 @@ String sein = "";
 int qrgin = -1;
 
 #define DELAY 50
+#define DELAYZD (DELAY/2+1)
+
 unsigned long now = 0, offset = 0, ltime = 0;
-uint8_t lmin = 0, lsec = 0, oldsec = 0;
+uint16_t lmin = 0;
+uint8_t lsec = 0, oldsec = 0;
 char c = 0;
 uint8_t id = 0;
 
@@ -394,8 +397,7 @@ static bool run = false;
               iauto = false;
             } else {
               if ( intervall > 9 ) {
-                intervall /= 2;
-                intervall *= 2; // for getting start  of period
+                intervall += intervall % 2;
                 Serial.print(F("... sending every "));
                 Serial.print(intervall);
                 Serial.println(F(" Minutes or until \"auto off\"."));
@@ -472,7 +474,7 @@ static bool run = false;
 
         if (wsprQRG > 0) {
           Serial.print(F(" ... sending now("));
-          printtime(millis());  
+          printtime(ltime);  
           Serial.print(F(") on "));
           Serial.print(mainQRG);
           Serial.print(F(" + "));
@@ -490,5 +492,5 @@ static bool run = false;
     sein = "";
     prompt();
   }
-  delay(DELAY);
+  delay(DELAYZD);
 }
